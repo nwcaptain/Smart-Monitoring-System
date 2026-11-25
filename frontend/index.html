@@ -1,0 +1,1462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Weather & Harmful Gas Monitoring System - Supervisor Portal</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Phosphor / Lucide Icons via inline SVG -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            industrial: {
+              900: '#0B1320', // deep dark navy
+              800: '#141E30', // dark navy sidebar/header
+              700: '#243B55', // slate industrial navy
+              600: '#334E68',
+              100: '#F0F4F8', // light dashboard background
+              50: '#F8FAFC',
+            },
+            safety: {
+              orange: '#EA580C', // vivid warning orange
+              red: '#DC2626',    // critical danger red
+              green: '#16A34A',  // safe normal green
+              yellow: '#CA8A04',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @keyframes pulse-subtle {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(1.08); }
+    }
+    .live-pulse {
+      animation: pulse-subtle 2s infinite ease-in-out;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body class="bg-industrial-100 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+
+  <!-- ========================================== -->
+  <!-- 1. VIEW CONTAINER: LOGIN PAGE              -->
+  <!-- ========================================== -->
+  <div id="view-login" class="flex-1 flex flex-col items-center justify-center min-h-screen bg-industrial-900 px-4 py-8 relative overflow-hidden">
+    <!-- Subtle Industrial Background Grid Effect -->
+    <div class="absolute inset-0 opacity-10 pointer-events-none" style="background-image: radial-gradient(#60a5fa 1px, transparent 1px); background-size: 28px 28px;"></div>
+    
+    <!-- Logout confirmation message (hidden by default) -->
+    <div id="logout-banner" class="hidden mb-6 w-full max-w-md bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 px-4 py-3 rounded-md text-sm flex items-center justify-between shadow-lg">
+      <div class="flex items-center space-x-2">
+        <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+        </svg>
+        <span class="font-medium">Logged out successfully.</span>
+      </div>
+      <button onclick="document.getElementById('logout-banner').classList.add('hidden')" class="text-emerald-400 hover:text-emerald-200">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+      </button>
+    </div>
+
+    <!-- Login Card -->
+    <div class="w-full max-w-md bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden relative z-10">
+      <!-- Top Industrial Header Accent Bar -->
+      <div class="h-2 bg-gradient-to-r from-orange-600 via-industrial-700 to-industrial-800"></div>
+
+      <div class="p-8">
+        <!-- System Branding -->
+        <div class="mb-7 text-center">
+          <div class="inline-flex items-center justify-center w-14 h-14 rounded-lg bg-industrial-900 text-orange-500 mb-4 shadow-md border border-slate-700">
+            <!-- Hazardous Monitoring Icon -->
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+          </div>
+          <h1 class="text-lg sm:text-xl font-black text-industrial-900 tracking-tight uppercase leading-snug">
+            Smart Weather &amp; Harmful Gas Monitoring System
+          </h1>
+          <p class="text-xs font-semibold uppercase tracking-wider text-orange-600 mt-1">
+            For Sanitation Workers • Hazardous Confined Space Safety
+          </p>
+          <div class="inline-block mt-2 px-2.5 py-0.5 bg-slate-100 border border-slate-300 text-slate-600 text-[11px] font-medium rounded">
+            Supervisor / Admin Control Console
+          </div>
+        </div>
+
+        <!-- Credentials Error Banner -->
+        <div id="login-error" class="hidden mb-5 p-3 rounded bg-red-50 border border-red-300 text-red-700 text-xs font-semibold flex items-center space-x-2">
+          <svg class="w-4 h-4 flex-shrink-0 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <span id="login-error-msg">Invalid username or password.</span>
+        </div>
+
+        <!-- Login Form -->
+        <form id="form-login" onsubmit="handleLogin(event)" class="space-x-0 space-y-4">
+          <div>
+            <label for="input-username" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              Username
+            </label>
+            <div class="relative">
+              <input type="text" id="input-username" value="admin" required
+                class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition"
+                placeholder="Enter admin username" autocomplete="username">
+              <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label for="input-password" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              Password
+            </label>
+            <div class="relative">
+              <input type="password" id="input-password" value="admin123" required
+                class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition"
+                placeholder="Enter password" autocomplete="current-password">
+              <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+              </div>
+            </div>
+          </div>
+
+          <button type="submit"
+            class="w-full py-3 px-4 bg-industrial-900 hover:bg-industrial-800 text-white font-bold text-sm uppercase tracking-wider rounded-lg shadow-md hover:shadow-lg border-t border-slate-700 transition flex items-center justify-center space-x-2">
+            <span>Access Monitoring Dashboard</span>
+            <svg class="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+            </svg>
+          </button>
+        </form>
+
+        <div class="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+          <span>Target: Manhole &amp; Sewer Safety Unit</span>
+          <span class="font-mono text-slate-500">v2.4.0 (IoT Live)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 2. MAIN APPLICATION CONTAINER (DASHBOARD)  -->
+  <!-- ========================================== -->
+  <div id="view-app" class="hidden min-h-screen flex flex-row bg-industrial-100">
+    
+    <!-- SIDEBAR (Dark Navy, contains ONLY: Dashboard, Sensors, Alerts, Logout) -->
+    <aside class="w-64 bg-industrial-900 text-slate-200 flex flex-col flex-shrink-0 border-r border-slate-800 select-none">
+      
+      <!-- System Brand in Sidebar -->
+      <div class="p-5 border-b border-slate-800/80">
+        <div class="flex items-center space-x-3">
+          <div class="w-9 h-9 rounded bg-orange-600 flex items-center justify-center text-white font-black shadow flex-shrink-0">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+          </div>
+          <div>
+            <div class="text-xs font-black uppercase text-white tracking-wide leading-tight">Gas &amp; Weather Monitor</div>
+            <div class="text-[10px] font-semibold text-orange-400">Sanitation Worker Safety</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation Menu (ONLY: Dashboard, Sensors, Alerts, Logout) -->
+      <nav class="flex-1 px-3 py-6 space-y-1.5">
+        <!-- 1. Dashboard Tab -->
+        <button id="nav-btn-dashboard" onclick="switchTab('dashboard')"
+          class="nav-tab w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-lg text-sm font-semibold transition bg-industrial-800 text-white border-l-4 border-orange-500 shadow-sm">
+          <svg class="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
+          </svg>
+          <span>Dashboard</span>
+        </button>
+
+        <!-- 2. Sensors Tab -->
+        <button id="nav-btn-sensors" onclick="switchTab('sensors')"
+          class="nav-tab w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-industrial-800/60 transition border-l-4 border-transparent">
+          <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>
+          </svg>
+          <span>Sensors</span>
+        </button>
+
+        <!-- 3. Alerts Tab -->
+        <button id="nav-btn-alerts" onclick="switchTab('alerts')"
+          class="nav-tab w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-industrial-800/60 transition border-l-4 border-transparent">
+          <div class="flex items-center space-x-3">
+            <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+            </svg>
+            <span>Alerts</span>
+          </div>
+          <span id="nav-alert-badge" class="hidden px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-red-600 text-white">1 High</span>
+        </button>
+      </nav>
+
+      <!-- Unit Info Panel in Sidebar -->
+      <div class="px-4 py-3 bg-industrial-800/50 mx-3 rounded-lg border border-slate-800 text-xs mb-3">
+        <div class="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">Active Site Deployment</div>
+        <div class="font-semibold text-slate-200">Manhole Unit #04-West</div>
+        <div class="text-[11px] text-slate-400">Underground Main Sewer Line</div>
+        <div class="mt-2 flex items-center justify-between text-[10px] text-slate-300 pt-2 border-t border-slate-700/60">
+          <span>Worker ID: #SW-108</span>
+          <span class="text-emerald-400 font-mono font-semibold">Node Active</span>
+        </div>
+      </div>
+
+      <!-- 4. Logout in Sidebar -->
+      <div class="p-4 border-t border-slate-800/80">
+        <button onclick="handleLogout()"
+          class="w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-lg text-sm font-semibold text-slate-300 hover:text-red-400 hover:bg-red-950/30 border border-slate-800 hover:border-red-800/50 transition">
+          <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+          </svg>
+          <span>Logout</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="flex-1 flex flex-col min-w-0 overflow-y-auto custom-scrollbar">
+      
+      <!-- Top Operational Header Bar -->
+      <header class="bg-white border-b border-slate-200 px-6 py-3.5 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-20 shadow-sm">
+        <div class="flex items-center space-x-3">
+          <div class="flex items-center space-x-2">
+            <span class="relative flex h-3 w-3">
+              <span id="live-ping" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span id="live-dot" class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+            </span>
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-700">LIVE TELEMETRY STREAM</span>
+          </div>
+          <span class="text-slate-300">|</span>
+          <span class="text-xs text-slate-500 font-mono" id="clock-display">UTC --:--:--</span>
+          <span class="text-slate-300">|</span>
+          <span class="text-xs text-slate-500">Telemetry Rate: <strong class="font-mono text-slate-700">3.0s</strong></span>
+        </div>
+
+        <!-- Simulation Control Bar for Testing States -->
+        <div class="flex items-center space-x-2 bg-slate-100 p-1 rounded-lg border border-slate-200">
+          <span class="text-[11px] font-bold text-slate-500 uppercase px-2">Simulate State:</span>
+          <button onclick="setSystemState('SAFE')" id="btn-state-safe"
+            class="px-2.5 py-1 text-xs font-bold rounded shadow-xs bg-emerald-600 text-white transition">
+            🟢 Safe
+          </button>
+          <button onclick="setSystemState('WARNING')" id="btn-state-warning"
+            class="px-2.5 py-1 text-xs font-bold rounded text-slate-700 hover:bg-slate-200 transition">
+            🟠 Warning
+          </button>
+          <button onclick="setSystemState('DANGER')" id="btn-state-danger"
+            class="px-2.5 py-1 text-xs font-bold rounded text-slate-700 hover:bg-slate-200 transition">
+            🔴 Danger
+          </button>
+        </div>
+      </header>
+
+      <!-- ==================================================== -->
+      <!-- TAB 1: MAIN ADMIN DASHBOARD                           -->
+      <!-- ==================================================== -->
+      <div id="tab-dashboard" class="p-6 space-y-6">
+
+        <!-- PROMINENT OVERALL SAFETY-STATUS PANEL -->
+        <div id="overall-safety-panel" class="p-5 rounded-xl border transition-all duration-300 bg-emerald-50 border-emerald-300 text-slate-900 shadow-sm">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="flex items-start space-x-4">
+              <!-- Big Visual Indicator Icon -->
+              <div id="safety-icon-wrapper" class="w-14 h-14 rounded-xl flex items-center justify-center text-3xl font-black bg-emerald-600 text-white shadow-md flex-shrink-0">
+                <span>🟢</span>
+              </div>
+              <div>
+                <div class="flex items-center space-x-2">
+                  <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Overall Safety Status</span>
+                  <span id="safety-badge" class="px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wide bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    SAFE
+                  </span>
+                </div>
+                <h2 id="safety-headline" class="text-2xl font-black text-slate-900 tracking-tight mt-0.5">
+                  Safe Working Environment
+                </h2>
+                <p id="safety-subtext" class="text-sm text-slate-600 font-medium mt-0.5">
+                  All toxic gas concentrations, environmental conditions, and worker physiological metrics are within acceptable safety thresholds.
+                </p>
+              </div>
+            </div>
+
+            <!-- Site Actions & Quick Confirmation -->
+            <div class="flex flex-col sm:flex-row items-end md:items-center gap-3">
+              <div class="text-right">
+                <div class="text-[10px] font-bold uppercase text-slate-400">Manhole Atmosphere</div>
+                <div id="atmosphere-desc" class="text-xs font-semibold text-emerald-700">Atmosphere Breathable &amp; Ventilated</div>
+              </div>
+              <button onclick="switchTab('alerts')" class="px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold text-slate-700 shadow-xs flex items-center space-x-1.5 transition">
+                <span>View Alert History</span>
+                <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- TOP CRITICAL ALERT BANNER (Prominently displayed when WARNING or DANGER) -->
+        <div id="top-alert-banner" class="hidden rounded-xl border p-4 shadow-md flex items-start justify-between transition-all duration-300">
+          <div class="flex items-start space-x-3">
+            <div id="alert-banner-icon" class="text-2xl flex-shrink-0 mt-0.5">⚠</div>
+            <div>
+              <div class="flex items-center space-x-2">
+                <span id="alert-banner-tag" class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-red-800 text-white">CRITICAL ALERT</span>
+                <span class="text-xs font-bold text-slate-800" id="alert-banner-title">H₂S Level High — Immediate Attention Required</span>
+              </div>
+              <p id="alert-banner-desc" class="text-xs text-slate-700 mt-1">
+                Detected Value: <strong>18.4 ppm</strong> (Permissible ceiling is 10 ppm). Instruct worker #SW-108 to evacuate manhole immediately and initiate emergency forced-air extraction.
+              </p>
+            </div>
+          </div>
+          <button onclick="acknowledgeAlert()" class="px-3 py-1.5 bg-white text-xs font-bold border border-slate-300 rounded hover:bg-slate-50 shadow-xs text-slate-700 flex-shrink-0 ml-4">
+            Acknowledge Alert
+          </button>
+        </div>
+
+        <!-- ==================================================== -->
+        <!-- 4. TOXIC GASES SECTION                              -->
+        <!-- ==================================================== -->
+        <section class="space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+              <div class="w-2.5 h-2.5 rounded-sm bg-orange-600"></div>
+              <h3 class="text-base font-black text-industrial-900 uppercase tracking-wide">Toxic Gases</h3>
+              <span class="text-xs text-slate-500 font-medium">(Sub-surface sewer hazardous gaseous compounds)</span>
+            </div>
+            <span class="text-xs text-slate-500">Threshold Standards: NIOSH / OSHA Sewer Specs</span>
+          </div>
+
+          <!-- 3 Simple Individual Cards: Carbon Monoxide (CO), Methane (CH4), Hydrogen Sulphide (H2S) -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+
+            <!-- Card 1: Carbon Monoxide (MQ-7) -->
+            <div id="card-gas-co" class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm transition-all duration-300 hover:shadow-md">
+              <div class="flex items-start justify-between">
+                <div>
+                  <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Sensor MQ-7</div>
+                  <h4 class="text-base font-bold text-slate-900 mt-0.5">Carbon Monoxide</h4>
+                  <span class="text-xs font-mono font-bold text-slate-400">CO</span>
+                </div>
+                <span id="badge-gas-co" class="px-2.5 py-1 text-xs font-black uppercase rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                  Normal
+                </span>
+              </div>
+              <div class="mt-4 flex items-baseline justify-between">
+                <div>
+                  <span id="val-gas-co" class="text-4xl font-black font-mono text-slate-900 tracking-tight">12</span>
+                  <span class="text-sm font-bold text-slate-500 ml-1">ppm</span>
+                </div>
+                <div class="text-[11px] text-right text-slate-400">
+                  <span>Limit: </span><span class="font-mono font-semibold text-slate-600">35 ppm</span>
+                </div>
+              </div>
+              <div class="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500 flex justify-between items-center">
+                <span>Status: <strong id="desc-gas-co" class="text-emerald-700">Safe Level</strong></span>
+                <span class="font-mono text-[11px] text-slate-400">MQ-7 OK</span>
+              </div>
+            </div>
+
+            <!-- Card 2: Methane (MQ-4) -->
+            <div id="card-gas-ch4" class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm transition-all duration-300 hover:shadow-md">
+              <div class="flex items-start justify-between">
+                <div>
+                  <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Sensor MQ-4</div>
+                  <h4 class="text-base font-bold text-slate-900 mt-0.5">Methane</h4>
+                  <span class="text-xs font-mono font-bold text-slate-400">CH₄ (Combustible)</span>
+                </div>
+                <span id="badge-gas-ch4" class="px-2.5 py-1 text-xs font-black uppercase rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                  Normal
+                </span>
+              </div>
+              <div class="mt-4 flex items-baseline justify-between">
+                <div>
+                  <span id="val-gas-ch4" class="text-4xl font-black font-mono text-slate-900 tracking-tight">0.8</span>
+                  <span class="text-sm font-bold text-slate-500 ml-1">% LEL</span>
+                </div>
+                <div class="text-[11px] text-right text-slate-400">
+                  <span>Limit: </span><span class="font-mono font-semibold text-slate-600">5.0% LEL</span>
+                </div>
+              </div>
+              <div class="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500 flex justify-between items-center">
+                <span>Status: <strong id="desc-gas-ch4" class="text-emerald-700">Flammability Safe</strong></span>
+                <span class="font-mono text-[11px] text-slate-400">MQ-4 OK</span>
+              </div>
+            </div>
+
+            <!-- Card 3: Hydrogen Sulphide (MQ-136) -->
+            <div id="card-gas-h2s" class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm transition-all duration-300 hover:shadow-md">
+              <div class="flex items-start justify-between">
+                <div>
+                  <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Sensor MQ-136</div>
+                  <h4 class="text-base font-bold text-slate-900 mt-0.5">Hydrogen Sulphide</h4>
+                  <span class="text-xs font-mono font-bold text-slate-400">H₂S (Sewer Gas)</span>
+                </div>
+                <span id="badge-gas-h2s" class="px-2.5 py-1 text-xs font-black uppercase rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                  Normal
+                </span>
+              </div>
+              <div class="mt-4 flex items-baseline justify-between">
+                <div>
+                  <span id="val-gas-h2s" class="text-4xl font-black font-mono text-slate-900 tracking-tight">2.1</span>
+                  <span class="text-sm font-bold text-slate-500 ml-1">ppm</span>
+                </div>
+                <div class="text-[11px] text-right text-slate-400">
+                  <span>Ceiling: </span><span class="font-mono font-semibold text-slate-600">10 ppm</span>
+                </div>
+              </div>
+              <div class="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500 flex justify-between items-center">
+                <span>Status: <strong id="desc-gas-h2s" class="text-emerald-700">Permissible</strong></span>
+                <span class="font-mono text-[11px] text-slate-400">MQ-136 OK</span>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- ==================================================== -->
+        <!-- 5. ENVIRONMENTAL CONDITIONS SECTION                 -->
+        <!-- ==================================================== -->
+        <section class="space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+              <div class="w-2.5 h-2.5 rounded-sm bg-industrial-700"></div>
+              <h3 class="text-base font-black text-industrial-900 uppercase tracking-wide">Environmental Conditions</h3>
+              <span class="text-xs text-slate-500 font-medium">(Atmospheric &amp; climatic chamber parameters)</span>
+            </div>
+            <span class="text-xs text-slate-500">Ambient Sensors: DHT11 &amp; MQ-135</span>
+          </div>
+
+          <!-- 4 Simple Cards: Temperature, Humidity, Air Quality, Environmental Status -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            
+            <!-- 1. Temperature -->
+            <div id="card-env-temp" class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm transition-all duration-300 hover:shadow-md">
+              <div class="flex items-start justify-between">
+                <div>
+                  <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">DHT11 Metric</div>
+                  <h4 class="text-sm font-bold text-slate-900 mt-0.5">Temperature</h4>
+                </div>
+                <span id="badge-env-temp" class="px-2 py-0.5 text-xs font-bold rounded-full bg-emerald-100 text-emerald-800">
+                  Normal
+                </span>
+              </div>
+              <div class="mt-4">
+                <span id="val-env-temp" class="text-3xl font-black font-mono text-slate-900">28.4</span>
+                <span class="text-base font-bold text-slate-500 ml-1">°C</span>
+              </div>
+              <div class="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500">
+                Safe range: 18°C - 35°C
+              </div>
+            </div>
+
+            <!-- 2. Humidity -->
+            <div id="card-env-hum" class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm transition-all duration-300 hover:shadow-md">
+              <div class="flex items-start justify-between">
+                <div>
+                  <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">DHT11 Metric</div>
+                  <h4 class="text-sm font-bold text-slate-900 mt-0.5">Humidity</h4>
+                </div>
+                <span id="badge-env-hum" class="px-2 py-0.5 text-xs font-bold rounded-full bg-emerald-100 text-emerald-800">
+                  Normal
+                </span>
+              </div>
+              <div class="mt-4">
+                <span id="val-env-hum" class="text-3xl font-black font-mono text-slate-900">68</span>
+                <span class="text-base font-bold text-slate-500 ml-1">%</span>
+              </div>
+              <div class="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500">
+                Safe range: 30% - 85%
+              </div>
+            </div>
+
+            <!-- 3. Air Quality -->
+            <div id="card-env-aqi" class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm transition-all duration-300 hover:shadow-md">
+              <div class="flex items-start justify-between">
+                <div>
+                  <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Sensor MQ-135</div>
+                  <h4 class="text-sm font-bold text-slate-900 mt-0.5">Air Quality</h4>
+                </div>
+                <span id="badge-env-aqi" class="px-2 py-0.5 text-xs font-bold rounded-full bg-emerald-100 text-emerald-800">
+                  Good
+                </span>
+              </div>
+              <div class="mt-4">
+                <span id="val-env-aqi" class="text-3xl font-black font-mono text-slate-900">62</span>
+                <span class="text-xs font-bold text-slate-400 ml-1">PPM eq.</span>
+              </div>
+              <div class="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500">
+                Smoke, NH3 &amp; Benzene Index
+              </div>
+            </div>
+
+            <!-- 4. Environmental Status -->
+            <div id="card-env-status" class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm transition-all duration-300 hover:shadow-md">
+              <div class="flex items-start justify-between">
+                <div>
+                  <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Aggregate Summary</div>
+                  <h4 class="text-sm font-bold text-slate-900 mt-0.5">Environmental Status</h4>
+                </div>
+                <span id="badge-env-status" class="px-2 py-0.5 text-xs font-bold rounded-full bg-emerald-100 text-emerald-800">
+                  Normal
+                </span>
+              </div>
+              <div class="mt-4">
+                <span id="val-env-status" class="text-2xl font-black text-slate-900">Optimal</span>
+              </div>
+              <div class="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500">
+                Overall Chamber Air: Stable
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- ==================================================== -->
+        <!-- 6. WORKER HEALTH SECTION                            -->
+        <!-- ==================================================== -->
+        <section class="space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+              <div class="w-2.5 h-2.5 rounded-sm bg-rose-600"></div>
+              <h3 class="text-base font-black text-industrial-900 uppercase tracking-wide">Worker Health</h3>
+              <span class="text-xs text-slate-500 font-medium">(MAX30102 Biosensor telemetry worn by sanitation worker)</span>
+            </div>
+            <span class="text-xs font-mono font-semibold text-slate-500">Worker Device: W-TETHER-01</span>
+          </div>
+
+          <!-- 2 Simple Cards: Heart Rate, SpO2 (Visually separate from gas section) -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+
+            <!-- 1. Heart Rate -->
+            <div id="card-health-hr" class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm transition-all duration-300 hover:shadow-md">
+              <div class="flex items-start justify-between">
+                <div class="flex items-center space-x-3">
+                  <div class="w-10 h-10 rounded-lg bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                    </svg>
+                  </div>
+                  <div>
+                    <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">MAX30102 Optical Sensor</div>
+                    <h4 class="text-base font-bold text-slate-900">Heart Rate</h4>
+                  </div>
+                </div>
+                <span id="badge-health-hr" class="px-2.5 py-1 text-xs font-black uppercase rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                  Normal
+                </span>
+              </div>
+              <div class="mt-4 flex items-baseline justify-between">
+                <div>
+                  <span id="val-health-hr" class="text-4xl font-black font-mono text-slate-900 tracking-tight">74</span>
+                  <span class="text-sm font-bold text-slate-500 ml-1">BPM</span>
+                </div>
+                <div class="text-xs text-slate-400">
+                  Normal resting/working range: <span class="font-mono text-slate-600">60 - 100</span>
+                </div>
+              </div>
+              <div class="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500 flex justify-between items-center">
+                <span>Status: <strong id="desc-health-hr" class="text-emerald-700">Rhythm Normal</strong></span>
+                <span class="font-mono text-[11px] text-slate-400">Pulse Signal Steady</span>
+              </div>
+            </div>
+
+            <!-- 2. SpO2 -->
+            <div id="card-health-spo2" class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm transition-all duration-300 hover:shadow-md">
+              <div class="flex items-start justify-between">
+                <div class="flex items-center space-x-3">
+                  <div class="w-10 h-10 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
+                    </svg>
+                  </div>
+                  <div>
+                    <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">MAX30102 Pulse Oximeter</div>
+                    <h4 class="text-base font-bold text-slate-900">Blood Oxygen (SpO₂)</h4>
+                  </div>
+                </div>
+                <span id="badge-health-spo2" class="px-2.5 py-1 text-xs font-black uppercase rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                  Normal
+                </span>
+              </div>
+              <div class="mt-4 flex items-baseline justify-between">
+                <div>
+                  <span id="val-health-spo2" class="text-4xl font-black font-mono text-slate-900 tracking-tight">98</span>
+                  <span class="text-sm font-bold text-slate-500 ml-1">%</span>
+                </div>
+                <div class="text-xs text-slate-400">
+                  Hypoxia threshold: <span class="font-mono text-slate-600">&lt; 92%</span>
+                </div>
+              </div>
+              <div class="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500 flex justify-between items-center">
+                <span>Status: <strong id="desc-health-spo2" class="text-emerald-700">Optimal Oxygenation</strong></span>
+                <span class="font-mono text-[11px] text-slate-400">Perfusion Index OK</span>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- ==================================================== -->
+        <!-- 7. ALERTS AREA ON DASHBOARD                         -->
+        <!-- ==================================================== -->
+        <section class="space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+              <div class="w-2.5 h-2.5 rounded-sm bg-industrial-900"></div>
+              <h3 class="text-base font-black text-industrial-900 uppercase tracking-wide">Live Safety Incidents &amp; Alerts</h3>
+            </div>
+            <button onclick="switchTab('alerts')" class="text-xs font-bold text-industrial-700 hover:text-orange-600">
+              View Complete Incident Log &rarr;
+            </button>
+          </div>
+
+          <div id="dashboard-alerts-container" class="space-y-2.5">
+            <!-- Dynamic alerts inserted via JS -->
+          </div>
+        </section>
+
+      </div>
+
+      <!-- ==================================================== -->
+      <!-- TAB 2: SENSORS PAGE                                   -->
+      <!-- ==================================================== -->
+      <div id="tab-sensors" class="hidden p-6 space-y-6">
+        <div>
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-xl font-black text-industrial-900 uppercase tracking-tight">Installed Hardware Sensors</h2>
+              <p class="text-xs text-slate-500 mt-0.5">Comprehensive status breakdown of the 6 IoT detection modules deployed on Unit #04</p>
+            </div>
+            <span class="px-3 py-1 bg-industrial-900 text-white text-xs font-mono font-bold rounded">
+              6/6 SENSORS CALIBRATED
+            </span>
+          </div>
+        </div>
+
+        <!-- 6 Detailed Sensor Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+          <!-- 1. MQ-135 — Air Quality -->
+          <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-4 hover:border-slate-300 transition">
+            <div class="flex items-start justify-between">
+              <div>
+                <span class="inline-block px-2 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 font-mono text-[11px] font-bold rounded">
+                  MQ-135
+                </span>
+                <h3 class="text-base font-bold text-slate-900 mt-1.5">Air Quality Sensor</h3>
+              </div>
+              <span id="sensors-page-badge-mq135" class="px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-100 text-emerald-800">
+                Normal
+              </span>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              <strong class="text-slate-800">Measures:</strong> Ammonia (NH₃), Benzene, Alcohol, Smoke, and general atmospheric pollutants in confined vaults.
+            </p>
+            <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 flex justify-between items-center">
+              <div>
+                <div class="text-[10px] font-bold uppercase text-slate-400">Current Reading</div>
+                <div class="text-2xl font-black font-mono text-slate-900" id="sensors-page-val-mq135">62 <span class="text-xs font-sans text-slate-500 font-normal">PPM eq.</span></div>
+              </div>
+              <div class="text-right">
+                <div class="text-[10px] font-bold uppercase text-slate-400">Operating Status</div>
+                <div class="text-xs font-bold text-emerald-700" id="sensors-page-stat-mq135">Normal / Clear</div>
+              </div>
+            </div>
+            <div class="text-[11px] text-slate-500 flex justify-between border-t border-slate-100 pt-3">
+              <span>Channel: Analog A0</span>
+              <span>Baseline: 45 PPM</span>
+            </div>
+          </div>
+
+          <!-- 2. MQ-7 — Carbon Monoxide -->
+          <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-4 hover:border-slate-300 transition">
+            <div class="flex items-start justify-between">
+              <div>
+                <span class="inline-block px-2 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 font-mono text-[11px] font-bold rounded">
+                  MQ-7
+                </span>
+                <h3 class="text-base font-bold text-slate-900 mt-1.5">Carbon Monoxide (CO)</h3>
+              </div>
+              <span id="sensors-page-badge-mq7" class="px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-100 text-emerald-800">
+                Normal
+              </span>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              <strong class="text-slate-800">Measures:</strong> Odorless, toxic Carbon Monoxide (CO) gas generated by partial combustion in drainage basins.
+            </p>
+            <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 flex justify-between items-center">
+              <div>
+                <div class="text-[10px] font-bold uppercase text-slate-400">Current Reading</div>
+                <div class="text-2xl font-black font-mono text-slate-900" id="sensors-page-val-mq7">12 <span class="text-xs font-sans text-slate-500 font-normal">ppm</span></div>
+              </div>
+              <div class="text-right">
+                <div class="text-[10px] font-bold uppercase text-slate-400">Operating Status</div>
+                <div class="text-xs font-bold text-emerald-700" id="sensors-page-stat-mq7">Normal / Below 35 ppm</div>
+              </div>
+            </div>
+            <div class="text-[11px] text-slate-500 flex justify-between border-t border-slate-100 pt-3">
+              <span>Channel: Analog A1</span>
+              <span>Heater Cycle: Active</span>
+            </div>
+          </div>
+
+          <!-- 3. MQ-4 — Methane -->
+          <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-4 hover:border-slate-300 transition">
+            <div class="flex items-start justify-between">
+              <div>
+                <span class="inline-block px-2 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 font-mono text-[11px] font-bold rounded">
+                  MQ-4
+                </span>
+                <h3 class="text-base font-bold text-slate-900 mt-1.5">Methane Gas (CH₄)</h3>
+              </div>
+              <span id="sensors-page-badge-mq4" class="px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-100 text-emerald-800">
+                Normal
+              </span>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              <strong class="text-slate-800">Measures:</strong> Natural gas and combustible Methane (CH₄) concentration for flash-fire and explosion prevention.
+            </p>
+            <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 flex justify-between items-center">
+              <div>
+                <div class="text-[10px] font-bold uppercase text-slate-400">Current Reading</div>
+                <div class="text-2xl font-black font-mono text-slate-900" id="sensors-page-val-mq4">0.8 <span class="text-xs font-sans text-slate-500 font-normal">% LEL</span></div>
+              </div>
+              <div class="text-right">
+                <div class="text-[10px] font-bold uppercase text-slate-400">Operating Status</div>
+                <div class="text-xs font-bold text-emerald-700" id="sensors-page-stat-mq4">Normal / Non-combustible</div>
+              </div>
+            </div>
+            <div class="text-[11px] text-slate-500 flex justify-between border-t border-slate-100 pt-3">
+              <span>Channel: Analog A2</span>
+              <span>Lower Explosive Limit: 5%</span>
+            </div>
+          </div>
+
+          <!-- 4. MQ-136 — Hydrogen Sulphide -->
+          <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-4 hover:border-slate-300 transition">
+            <div class="flex items-start justify-between">
+              <div>
+                <span class="inline-block px-2 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 font-mono text-[11px] font-bold rounded">
+                  MQ-136
+                </span>
+                <h3 class="text-base font-bold text-slate-900 mt-1.5">Hydrogen Sulphide (H₂S)</h3>
+              </div>
+              <span id="sensors-page-badge-mq136" class="px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-100 text-emerald-800">
+                Normal
+              </span>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              <strong class="text-slate-800">Measures:</strong> Extremely hazardous Hydrogen Sulphide sewer gas, causing rapid olfactory fatigue and asphyxiation.
+            </p>
+            <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 flex justify-between items-center">
+              <div>
+                <div class="text-[10px] font-bold uppercase text-slate-400">Current Reading</div>
+                <div class="text-2xl font-black font-mono text-slate-900" id="sensors-page-val-mq136">2.1 <span class="text-xs font-sans text-slate-500 font-normal">ppm</span></div>
+              </div>
+              <div class="text-right">
+                <div class="text-[10px] font-bold uppercase text-slate-400">Operating Status</div>
+                <div class="text-xs font-bold text-emerald-700" id="sensors-page-stat-mq136">Normal / Safe</div>
+              </div>
+            </div>
+            <div class="text-[11px] text-slate-500 flex justify-between border-t border-slate-100 pt-3">
+              <span>Channel: Analog A3</span>
+              <span>IDLH Threshold: 100 ppm</span>
+            </div>
+          </div>
+
+          <!-- 5. DHT11 — Temperature & Humidity -->
+          <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-4 hover:border-slate-300 transition">
+            <div class="flex items-start justify-between">
+              <div>
+                <span class="inline-block px-2 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 font-mono text-[11px] font-bold rounded">
+                  DHT11
+                </span>
+                <h3 class="text-base font-bold text-slate-900 mt-1.5">Temp &amp; Humidity</h3>
+              </div>
+              <span id="sensors-page-badge-dht11" class="px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-100 text-emerald-800">
+                Normal
+              </span>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              <strong class="text-slate-800">Measures:</strong> Ambient thermal conditions and relative humidity to monitor worker heat stroke and moisture build-up.
+            </p>
+            <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 flex justify-between items-center">
+              <div>
+                <div class="text-[10px] font-bold uppercase text-slate-400">Current Readings</div>
+                <div class="text-xl font-black font-mono text-slate-900" id="sensors-page-val-dht11">
+                  28.4°C <span class="text-sm font-sans font-normal text-slate-500">/ 68%</span>
+                </div>
+              </div>
+              <div class="text-right">
+                <div class="text-[10px] font-bold uppercase text-slate-400">Operating Status</div>
+                <div class="text-xs font-bold text-emerald-700" id="sensors-page-stat-dht11">Normal Range</div>
+              </div>
+            </div>
+            <div class="text-[11px] text-slate-500 flex justify-between border-t border-slate-100 pt-3">
+              <span>Protocol: 1-Wire Digital GPIO4</span>
+              <span>Sampling: 1 Hz</span>
+            </div>
+          </div>
+
+          <!-- 6. MAX30102 — Heart Rate & SpO2 -->
+          <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-4 hover:border-slate-300 transition">
+            <div class="flex items-start justify-between">
+              <div>
+                <span class="inline-block px-2 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 font-mono text-[11px] font-bold rounded">
+                  MAX30102
+                </span>
+                <h3 class="text-base font-bold text-slate-900 mt-1.5">Heart Rate &amp; SpO₂</h3>
+              </div>
+              <span id="sensors-page-badge-max30102" class="px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-100 text-emerald-800">
+                Normal
+              </span>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              <strong class="text-slate-800">Measures:</strong> Real-time PPG pulse rate and peripheral capillary blood oxygenation (% SpO₂) directly on the worker.
+            </p>
+            <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 flex justify-between items-center">
+              <div>
+                <div class="text-[10px] font-bold uppercase text-slate-400">Current Readings</div>
+                <div class="text-xl font-black font-mono text-slate-900" id="sensors-page-val-max30102">
+                  74 BPM <span class="text-sm font-sans font-normal text-slate-500">/ 98%</span>
+                </div>
+              </div>
+              <div class="text-right">
+                <div class="text-[10px] font-bold uppercase text-slate-400">Operating Status</div>
+                <div class="text-xs font-bold text-emerald-700" id="sensors-page-stat-max30102">Biometrics Stable</div>
+              </div>
+            </div>
+            <div class="text-[11px] text-slate-500 flex justify-between border-t border-slate-100 pt-3">
+              <span>Bus: I2C (Address 0x57)</span>
+              <span>Wearable Safety Band</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ==================================================== -->
+      <!-- TAB 3: ALERTS PAGE                                    -->
+      <!-- ==================================================== -->
+      <div id="tab-alerts" class="hidden p-6 space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-xl font-black text-industrial-900 uppercase tracking-tight">System Incident &amp; Alert History</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Chronological log of safety thresholds, warning triggers, and hazardous gas events</p>
+          </div>
+          <div class="flex items-center space-x-2">
+            <button onclick="filterAlerts('ALL')" class="alert-filter-btn px-3 py-1.5 text-xs font-bold rounded bg-industrial-900 text-white">All Alerts</button>
+            <button onclick="filterAlerts('CRITICAL')" class="alert-filter-btn px-3 py-1.5 text-xs font-bold rounded bg-white border border-slate-300 text-slate-700 hover:bg-slate-50">Critical Only</button>
+            <button onclick="filterAlerts('WARNING')" class="alert-filter-btn px-3 py-1.5 text-xs font-bold rounded bg-white border border-slate-300 text-slate-700 hover:bg-slate-50">Warnings Only</button>
+          </div>
+        </div>
+
+        <!-- Alert History Table Container -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr class="bg-slate-50 text-slate-700 border-b border-slate-200 font-bold uppercase tracking-wider text-[11px]">
+                  <th class="py-3 px-4">Sensor</th>
+                  <th class="py-3 px-4">Alert Type</th>
+                  <th class="py-3 px-4">Severity</th>
+                  <th class="py-3 px-4">Detected Value</th>
+                  <th class="py-3 px-4">Date</th>
+                  <th class="py-3 px-4">Time</th>
+                  <th class="py-3 px-4">Action Taken / Log</th>
+                </tr>
+              </thead>
+              <tbody id="alerts-table-body" class="divide-y divide-slate-100 font-medium">
+                <!-- Row template rendered by JS -->
+              </tbody>
+            </table>
+          </div>
+          <div class="p-3 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 flex justify-between items-center">
+            <span id="alerts-count-summary">Showing 5 incidents logged during current deployment</span>
+            <span class="font-mono text-[11px]">Auto-archived to local EEPROM memory</span>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- JAVASCRIPT LOGIC FOR REAL-TIME SIMULATION, AUTHENTICATION & INTERACTION -->
+  <script>
+    // System State Variables
+    let currentSystemState = 'SAFE'; // 'SAFE' | 'WARNING' | 'DANGER'
+    let currentTab = 'dashboard';
+    let simulationTimer = null;
+    let clockTimer = null;
+
+    // Default Baseline Readings for SAFE state
+    const sensorData = {
+      co: 12.0,      // ppm
+      ch4: 0.8,      // % LEL
+      h2s: 2.1,      // ppm
+      temp: 28.4,    // °C
+      hum: 68,       // %
+      aqi: 62,       // ppm eq
+      hr: 74,        // bpm
+      spo2: 98       // %
+    };
+
+    // Alert Log Data (Initial Realistic Historical Samples)
+    let alertHistory = [
+      {
+        id: 1,
+        sensor: 'H₂S (MQ-136)',
+        alert: 'High Sewer Gas Level',
+        severity: 'Critical',
+        value: '18.4 ppm',
+        date: '20 Sep 2026',
+        time: '14:28:12',
+        action: 'Immediate evacuation horn sounded'
+      },
+      {
+        id: 2,
+        sensor: 'CO (MQ-7)',
+        alert: 'Elevated Carbon Monoxide',
+        severity: 'Warning',
+        value: '38.2 ppm',
+        date: '20 Sep 2026',
+        time: '14:22:45',
+        action: 'Auxiliary blowers engaged'
+      },
+      {
+        id: 3,
+        sensor: 'CH₄ (MQ-4)',
+        alert: 'Methane Flammable Rise',
+        severity: 'Warning',
+        value: '3.8 % LEL',
+        date: '20 Sep 2026',
+        time: '13:50:09',
+        action: 'Checked gas seals & drain traps'
+      },
+      {
+        id: 4,
+        sensor: 'MAX30102',
+        alert: 'Worker Elevated Pulse',
+        severity: 'Warning',
+        value: '118 BPM',
+        date: '20 Sep 2026',
+        time: '12:15:30',
+        action: 'Rest break ordered for worker'
+      },
+      {
+        id: 5,
+        sensor: 'DHT11',
+        alert: 'Chamber Heat Index Rise',
+        severity: 'Warning',
+        value: '36.5 °C',
+        date: '20 Sep 2026',
+        time: '11:04:18',
+        action: 'Surface hydration sent down'
+      }
+    ];
+
+    // Clock Display
+    function updateClock() {
+      const now = new Date();
+      const timeStr = now.toTimeString().split(' ')[0];
+      const clockEl = document.getElementById('clock-display');
+      if (clockEl) clockEl.textContent = `LIVE CLOCK: ${timeStr}`;
+    }
+
+    // Backend API base URL (Java ApiServer.java)
+    const API_BASE = 'http://localhost:8080';
+
+    // Login Handler - now calls the real Authentication backend
+    async function handleLogin(e) {
+      e.preventDefault();
+      const user = document.getElementById('input-username').value.trim();
+      const pass = document.getElementById('input-password').value.trim();
+      const errorDiv = document.getElementById('login-error');
+      const errorMsg = document.getElementById('login-error-msg');
+
+      try {
+        const res = await fetch(`${API_BASE}/api/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: user, password: pass })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          errorDiv.classList.add('hidden');
+          document.getElementById('logout-banner').classList.add('hidden');
+          document.getElementById('view-login').classList.add('hidden');
+          document.getElementById('view-app').classList.remove('hidden');
+          startRealTimeSimulation();
+        } else {
+          errorMsg.textContent = data.message || 'Invalid username or password.';
+          errorDiv.classList.remove('hidden');
+        }
+      } catch (err) {
+        errorMsg.textContent = 'Cannot reach backend server. Is ApiServer running on port 8080?';
+        errorDiv.classList.remove('hidden');
+      }
+    }
+
+    // Logout Handler
+    function handleLogout() {
+      if (simulationTimer) clearInterval(simulationTimer);
+      document.getElementById('view-app').classList.add('hidden');
+      document.getElementById('view-login').classList.remove('hidden');
+      document.getElementById('logout-banner').classList.remove('hidden');
+      document.getElementById('input-password').value = '';
+      // Reset state to SAFE
+      setSystemState('SAFE');
+    }
+
+    // Navigation Tab Switcher
+    function switchTab(tabId) {
+      currentTab = tabId;
+      const tabs = ['dashboard', 'sensors', 'alerts'];
+      
+      tabs.forEach(t => {
+        const el = document.getElementById(`tab-${t}`);
+        const btn = document.getElementById(`nav-btn-${t}`);
+        if (t === tabId) {
+          el.classList.remove('hidden');
+          btn.className = 'nav-tab w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-lg text-sm font-semibold transition bg-industrial-800 text-white border-l-4 border-orange-500 shadow-sm';
+          // Ensure svg icon lights up
+          const svg = btn.querySelector('svg');
+          if (svg) svg.classList.remove('text-slate-400');
+          if (svg) svg.classList.add('text-orange-400');
+        } else {
+          el.classList.add('hidden');
+          btn.className = 'nav-tab w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-industrial-800/60 transition border-l-4 border-transparent';
+          const svg = btn.querySelector('svg');
+          if (svg) svg.classList.remove('text-orange-400');
+          if (svg) svg.classList.add('text-slate-400');
+        }
+      });
+
+      if (tabId === 'alerts') {
+        fetchAlerts();
+      }
+    }
+
+    // State Changer Function (SAFE, WARNING, DANGER)
+    function setSystemState(state) {
+      currentSystemState = state;
+
+      // Update Top State Buttons styling
+      ['safe', 'warning', 'danger'].forEach(s => {
+        const b = document.getElementById(`btn-state-${s}`);
+        if (s.toUpperCase() === state) {
+          if (s === 'safe') b.className = 'px-2.5 py-1 text-xs font-bold rounded shadow-xs bg-emerald-600 text-white transition';
+          if (s === 'warning') b.className = 'px-2.5 py-1 text-xs font-bold rounded shadow-xs bg-orange-600 text-white transition';
+          if (s === 'danger') b.className = 'px-2.5 py-1 text-xs font-bold rounded shadow-xs bg-red-600 text-white transition';
+        } else {
+          b.className = 'px-2.5 py-1 text-xs font-bold rounded text-slate-700 hover:bg-slate-200 transition';
+        }
+      });
+
+      applyStateValues();
+    }
+
+    // Apply Values and Visual Classes based on currentSystemState
+    function applyStateValues() {
+      const overallPanel = document.getElementById('overall-safety-panel');
+      const safetyIconWrapper = document.getElementById('safety-icon-wrapper');
+      const safetyBadge = document.getElementById('safety-badge');
+      const safetyHeadline = document.getElementById('safety-headline');
+      const safetySubtext = document.getElementById('safety-subtext');
+      const topAlertBanner = document.getElementById('top-alert-banner');
+      const atmosphereDesc = document.getElementById('atmosphere-desc');
+      const navAlertBadge = document.getElementById('nav-alert-badge');
+
+      // GAS CARDS
+      const cardH2S = document.getElementById('card-gas-h2s');
+      const badgeH2S = document.getElementById('badge-gas-h2s');
+      const descH2S = document.getElementById('desc-gas-h2s');
+
+      const cardCO = document.getElementById('card-gas-co');
+      const badgeCO = document.getElementById('badge-gas-co');
+      const descCO = document.getElementById('desc-gas-co');
+
+      const cardCH4 = document.getElementById('card-gas-ch4');
+      const badgeCH4 = document.getElementById('badge-gas-ch4');
+      const descCH4 = document.getElementById('desc-gas-ch4');
+
+      // HEALTH CARDS
+      const cardHR = document.getElementById('card-health-hr');
+      const badgeHR = document.getElementById('badge-health-hr');
+      const descHR = document.getElementById('desc-health-hr');
+
+      const cardSpO2 = document.getElementById('card-health-spo2');
+      const badgeSpO2 = document.getElementById('badge-health-spo2');
+      const descSpO2 = document.getElementById('desc-health-spo2');
+
+      // LIVE DOTS
+      const livePing = document.getElementById('live-ping');
+      const liveDot = document.getElementById('live-dot');
+
+      if (currentSystemState === 'SAFE') {
+        // Overall Panel Safe
+        overallPanel.className = 'p-5 rounded-xl border transition-all duration-300 bg-emerald-50 border-emerald-300 text-slate-900 shadow-sm';
+        safetyIconWrapper.className = 'w-14 h-14 rounded-xl flex items-center justify-center text-3xl font-black bg-emerald-600 text-white shadow-md flex-shrink-0';
+        safetyIconWrapper.innerHTML = '🟢';
+        safetyBadge.className = 'px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wide bg-emerald-100 text-emerald-800 border border-emerald-300';
+        safetyBadge.textContent = 'SAFE';
+        safetyHeadline.textContent = 'Safe Working Environment';
+        safetySubtext.textContent = 'All toxic gas concentrations, environmental conditions, and worker physiological metrics are within acceptable safety thresholds.';
+        atmosphereDesc.textContent = 'Atmosphere Breathable & Ventilated';
+        atmosphereDesc.className = 'text-xs font-semibold text-emerald-700';
+
+        topAlertBanner.classList.add('hidden');
+        navAlertBadge.classList.add('hidden');
+
+        livePing.className = 'animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75';
+        liveDot.className = 'relative inline-flex rounded-full h-3 w-3 bg-emerald-500';
+
+        // Reset Gas Cards to Normal
+        cardH2S.className = 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm transition-all duration-300 hover:shadow-md';
+        badgeH2S.className = 'px-2.5 py-1 text-xs font-black uppercase rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300';
+        badgeH2S.textContent = 'Normal';
+        descH2S.className = 'text-emerald-700';
+        descH2S.textContent = 'Permissible (<10 ppm)';
+
+        cardCO.className = 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm transition-all duration-300 hover:shadow-md';
+        badgeCO.className = 'px-2.5 py-1 text-xs font-black uppercase rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300';
+        badgeCO.textContent = 'Normal';
+        descCO.className = 'text-emerald-700';
+        descCO.textContent = 'Safe Level (<35 ppm)';
+
+        cardCH4.className = 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm transition-all duration-300 hover:shadow-md';
+        badgeCH4.className = 'px-2.5 py-1 text-xs font-black uppercase rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300';
+        badgeCH4.textContent = 'Normal';
+        descCH4.className = 'text-emerald-700';
+        descCH4.textContent = 'Flammability Safe';
+
+        // Worker Health Normal
+        cardHR.className = 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm transition-all duration-300 hover:shadow-md';
+        badgeHR.className = 'px-2.5 py-1 text-xs font-black uppercase rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300';
+        badgeHR.textContent = 'Normal';
+        descHR.className = 'text-emerald-700';
+        descHR.textContent = 'Rhythm Normal';
+
+        cardSpO2.className = 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm transition-all duration-300 hover:shadow-md';
+        badgeSpO2.className = 'px-2.5 py-1 text-xs font-black uppercase rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300';
+        badgeSpO2.textContent = 'Normal';
+        descSpO2.className = 'text-emerald-700';
+        descSpO2.textContent = 'Optimal Oxygenation';
+
+        renderDashboardAlerts([
+          { level: 'SAFE', text: 'All sensor nodes operational. No active gas leaks or worker physiological distress detected.', time: 'Just now' }
+        ]);
+
+      } else if (currentSystemState === 'WARNING') {
+        // Warning State (e.g. CO elevated & CH4 rising)
+        overallPanel.className = 'p-5 rounded-xl border transition-all duration-300 bg-amber-50 border-amber-400 text-slate-900 shadow-md';
+        safetyIconWrapper.className = 'w-14 h-14 rounded-xl flex items-center justify-center text-3xl font-black bg-amber-500 text-white shadow-md flex-shrink-0';
+        safetyIconWrapper.innerHTML = '🟠';
+        safetyBadge.className = 'px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wide bg-amber-200 text-amber-900 border border-amber-400';
+        safetyBadge.textContent = 'WARNING';
+        safetyHeadline.textContent = 'WARNING: Elevated Gas Concentration Detected';
+        safetySubtext.textContent = 'Carbon Monoxide (CO) concentration is approaching safety threshold limits. Increase mechanical air blower throughput.';
+        atmosphereDesc.textContent = 'Ventilation Required';
+        atmosphereDesc.className = 'text-xs font-semibold text-amber-800';
+
+        topAlertBanner.classList.remove('hidden');
+        topAlertBanner.className = 'rounded-xl border border-amber-300 bg-amber-50 p-4 shadow-md flex items-start justify-between transition-all duration-300';
+        document.getElementById('alert-banner-icon').textContent = '⚠';
+        document.getElementById('alert-banner-tag').className = 'px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-amber-600 text-white';
+        document.getElementById('alert-banner-tag').textContent = 'WARNING ALERT';
+        document.getElementById('alert-banner-title').textContent = 'CO Gas Concentration Rising';
+        document.getElementById('alert-banner-desc').innerHTML = 'Detected Value: <strong>36 ppm</strong> (Warning threshold is 35 ppm). Supervisor advised to initiate auxiliary sewer shaft ventilation fan.';
+
+        navAlertBadge.classList.remove('hidden');
+        navAlertBadge.className = 'px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-orange-600 text-white';
+        navAlertBadge.textContent = '1 Warning';
+
+        livePing.className = 'animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75';
+        liveDot.className = 'relative inline-flex rounded-full h-3 w-3 bg-amber-500';
+
+        // Update Affected Sensor: CO Warning Styling
+        cardCO.className = 'bg-amber-50/70 rounded-xl border-2 border-amber-400 p-5 shadow-md transition-all duration-300';
+        badgeCO.className = 'px-2.5 py-1 text-xs font-black uppercase rounded-full bg-amber-200 text-amber-900 border border-amber-400';
+        badgeCO.textContent = 'Warning';
+        descCO.className = 'text-amber-800 font-bold';
+        descCO.textContent = 'Elevated Threshold Exceeded';
+
+        // Keep others normal
+        cardH2S.className = 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm transition-all duration-300';
+        badgeH2S.className = 'px-2.5 py-1 text-xs font-black uppercase rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300';
+        badgeH2S.textContent = 'Normal';
+
+        renderDashboardAlerts([
+          { level: 'WARNING', text: 'WARNING: Carbon Monoxide (CO) level at 36 ppm. Exceeds standard safe baseline of 35 ppm. Ventilation mandated.', time: '1 min ago' },
+          { level: 'INFO', text: 'Telemetry confirmed from Unit #04-West. Worker heart rate remains stable at 84 BPM.', time: '2 mins ago' }
+        ]);
+
+      } else if (currentSystemState === 'DANGER') {
+        // DANGER STATE: Hydrogen Sulphide (H2S) Critical Breach!
+        overallPanel.className = 'p-5 rounded-xl border-2 border-red-500 bg-red-50 text-slate-900 shadow-lg';
+        safetyIconWrapper.className = 'w-14 h-14 rounded-xl flex items-center justify-center text-3xl font-black bg-red-600 text-white shadow-lg flex-shrink-0 animate-pulse';
+        safetyIconWrapper.innerHTML = '🔴';
+        safetyBadge.className = 'px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wide bg-red-600 text-white';
+        safetyBadge.textContent = 'DANGER';
+        safetyHeadline.textContent = 'DANGER: H₂S level above threshold';
+        safetySubtext.textContent = 'Immediate attention required. Hydrogen Sulphide gas reached toxic hazardous levels (18.4 ppm). Evacuate confined workspace immediately!';
+        atmosphereDesc.textContent = 'TOXIC ATMOSPHERE - EVACUATE';
+        atmosphereDesc.className = 'text-xs font-black text-red-600';
+
+        topAlertBanner.classList.remove('hidden');
+        topAlertBanner.className = 'rounded-xl border-2 border-red-600 bg-red-100 p-4 shadow-xl flex items-start justify-between transition-all duration-300';
+        document.getElementById('alert-banner-icon').textContent = '🚨';
+        document.getElementById('alert-banner-tag').className = 'px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-red-700 text-white animate-pulse';
+        document.getElementById('alert-banner-tag').textContent = 'CRITICAL DANGER';
+        document.getElementById('alert-banner-title').textContent = '⚠ H₂S Level High — Immediate Attention Required';
+        document.getElementById('alert-banner-desc').innerHTML = 'CRITICAL H₂S Level High. Detected Value: <strong>18.4 ppm</strong>. Immediate attention required: Worker safety harness retraction protocol triggered.';
+
+        navAlertBadge.classList.remove('hidden');
+        navAlertBadge.className = 'px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-red-600 text-white animate-pulse';
+        navAlertBadge.textContent = 'CRITICAL';
+
+        livePing.className = 'animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75';
+        liveDot.className = 'relative inline-flex rounded-full h-3 w-3 bg-red-600';
+
+        // Change affected sensor card (H2S) to red/danger styling
+        cardH2S.className = 'bg-red-50 rounded-xl border-2 border-red-600 p-5 shadow-lg transition-all duration-300 ring-2 ring-red-300';
+        badgeH2S.className = 'px-2.5 py-1 text-xs font-black uppercase rounded-full bg-red-600 text-white';
+        badgeH2S.textContent = 'Danger';
+        descH2S.className = 'text-red-700 font-black';
+        descH2S.textContent = 'CRITICAL TOXIC HAZARD (>10 ppm)';
+
+        // Worker Heart Rate shows distress in danger mode
+        cardHR.className = 'bg-orange-50 rounded-xl border border-orange-300 p-5 shadow-sm transition-all duration-300';
+        badgeHR.className = 'px-2.5 py-1 text-xs font-black uppercase rounded-full bg-orange-600 text-white';
+        badgeHR.textContent = 'Elevated';
+        descHR.className = 'text-orange-700 font-bold';
+        descHR.textContent = 'Tachycardia / Stress Detected';
+
+        renderDashboardAlerts([
+          { level: 'CRITICAL', text: 'CRITICAL H₂S Level High Detected Value: 18.4 ppm Immediate attention required', time: 'Just now' },
+          { level: 'WARNING', text: 'Worker pulse elevated to 112 BPM under hazardous confined chamber conditions.', time: '1 min ago' }
+        ]);
+      }
+    }
+
+    // Render Dashboard Alerts Area
+    function renderDashboardAlerts(alerts) {
+      const container = document.getElementById('dashboard-alerts-container');
+      container.innerHTML = '';
+
+      alerts.forEach(item => {
+        const div = document.createElement('div');
+        if (item.level === 'CRITICAL') {
+          div.className = 'p-3.5 rounded-lg border border-red-300 bg-red-50/90 text-red-900 flex items-start justify-between shadow-xs';
+          div.innerHTML = `
+            <div class="flex items-start space-x-3">
+              <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-red-600 text-white flex-shrink-0 mt-0.5">Critical</span>
+              <div>
+                <p class="text-xs font-bold">${item.text}</p>
+                <span class="text-[10px] text-red-700/80 font-mono">Triggered on Sensor MQ-136 • ${item.time}</span>
+              </div>
+            </div>
+            <span class="text-[11px] font-bold text-red-700 flex-shrink-0 ml-3">Evacuate</span>
+          `;
+        } else if (item.level === 'WARNING') {
+          div.className = 'p-3.5 rounded-lg border border-orange-300 bg-orange-50/90 text-orange-900 flex items-start justify-between shadow-xs';
+          div.innerHTML = `
+            <div class="flex items-start space-x-3">
+              <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-orange-600 text-white flex-shrink-0 mt-0.5">Warning</span>
+              <div>
+                <p class="text-xs font-bold">${item.text}</p>
+                <span class="text-[10px] text-orange-700/80 font-mono">Sub-threshold alarm • ${item.time}</span>
+              </div>
+            </div>
+            <span class="text-[11px] font-bold text-orange-700 flex-shrink-0 ml-3">Inspect</span>
+          `;
+        } else {
+          div.className = 'p-3.5 rounded-lg border border-emerald-200 bg-emerald-50/80 text-emerald-900 flex items-start justify-between shadow-xs';
+          div.innerHTML = `
+            <div class="flex items-start space-x-3">
+              <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-emerald-600 text-white flex-shrink-0 mt-0.5">Normal</span>
+              <div>
+                <p class="text-xs font-semibold text-slate-800">${item.text}</p>
+                <span class="text-[10px] text-emerald-700/90 font-mono">System healthy • ${item.time}</span>
+              </div>
+            </div>
+            <span class="text-[11px] font-bold text-emerald-700 flex-shrink-0 ml-3">Safe</span>
+          `;
+        }
+        container.appendChild(div);
+      });
+    }
+
+    // Acknowledge Alert Banner action
+    function acknowledgeAlert() {
+      const topAlertBanner = document.getElementById('top-alert-banner');
+      topAlertBanner.classList.add('opacity-40');
+      setTimeout(() => {
+        topAlertBanner.classList.add('hidden');
+        topAlertBanner.classList.remove('opacity-40');
+      }, 300);
+    }
+
+    // Render Alerts Page History Table
+    function renderAlertsTable(items) {
+      const tbody = document.getElementById('alerts-table-body');
+      tbody.innerHTML = '';
+
+      items.forEach(alert => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
+
+        const isCritical = alert.severity.toLowerCase() === 'critical';
+        const severityBadge = isCritical 
+          ? `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black uppercase bg-red-100 text-red-700 border border-red-300">
+               <span class="w-1.5 h-1.5 rounded-full bg-red-600 mr-1.5"></span> Critical
+             </span>`
+          : `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black uppercase bg-orange-100 text-orange-700 border border-orange-300">
+               <span class="w-1.5 h-1.5 rounded-full bg-orange-500 mr-1.5"></span> Warning
+             </span>`;
+
+        tr.innerHTML = `
+          <td class="py-3 px-4 font-mono font-bold text-slate-900">${alert.sensor}</td>
+          <td class="py-3 px-4 text-slate-800 font-semibold">${alert.alert}</td>
+          <td class="py-3 px-4">${severityBadge}</td>
+          <td class="py-3 px-4 font-mono font-bold ${isCritical ? 'text-red-600' : 'text-orange-600'}">${alert.value}</td>
+          <td class="py-3 px-4 text-slate-500">${alert.date}</td>
+          <td class="py-3 px-4 font-mono text-slate-500">${alert.time}</td>
+          <td class="py-3 px-4 text-slate-600 text-[11px]">${alert.action}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById('alerts-count-summary').textContent = `Showing ${items.length} incidents logged during current deployment`;
+    }
+
+    // Filter Alerts in Tab 3
+    function filterAlerts(type) {
+      document.querySelectorAll('.alert-filter-btn').forEach(btn => {
+        btn.className = 'alert-filter-btn px-3 py-1.5 text-xs font-bold rounded bg-white border border-slate-300 text-slate-700 hover:bg-slate-50';
+      });
+
+      if (type === 'ALL') {
+        renderAlertsTable(alertHistory);
+        event.target.className = 'alert-filter-btn px-3 py-1.5 text-xs font-bold rounded bg-industrial-900 text-white';
+      } else if (type === 'CRITICAL') {
+        const filtered = alertHistory.filter(a => a.severity.toUpperCase() === 'CRITICAL');
+        renderAlertsTable(filtered);
+        event.target.className = 'alert-filter-btn px-3 py-1.5 text-xs font-bold rounded bg-industrial-900 text-white';
+      } else if (type === 'WARNING') {
+        const filtered = alertHistory.filter(a => a.severity.toUpperCase() === 'WARNING');
+        renderAlertsTable(filtered);
+        event.target.className = 'alert-filter-btn px-3 py-1.5 text-xs font-bold rounded bg-industrial-900 text-white';
+      }
+    }
+
+    // Fetch live alert history from the backend (AlertSystem / Database)
+    async function fetchAlerts() {
+      try {
+        const res = await fetch(`${API_BASE}/api/alerts`);
+        const items = await res.json();
+        alertHistory = items.slice().reverse(); // newest first
+        renderAlertsTable(alertHistory);
+      } catch (err) {
+        console.error('Failed to fetch alerts from backend', err);
+      }
+    }
+
+    // Real-Time Feed - now polls the Java backend (MonitoringSystem.scanAll())
+    // instead of generating random jitter locally. The "Simulate State"
+    // buttons no longer change these values, since they now come from the
+    // real sensor classes on the server.
+    function startRealTimeSimulation() {
+      if (simulationTimer) clearInterval(simulationTimer);
+
+      const fetchReadings = async () => {
+        try {
+          const res = await fetch(`${API_BASE}/api/readings`);
+          const data = await res.json();
+
+          sensorData.co = data.co;
+          sensorData.ch4 = data.ch4;
+          sensorData.h2s = data.h2s;
+          sensorData.temp = data.temp;
+          sensorData.hum = Math.round(data.hum);
+          sensorData.aqi = Math.round(data.aqi);
+          sensorData.hr = Math.round(data.hr);
+          sensorData.spo2 = Math.round(data.spo2);
+
+          // Update DOM on Dashboard Tab
+          document.getElementById('val-gas-co').textContent = sensorData.co.toFixed(1);
+          document.getElementById('val-gas-ch4').textContent = sensorData.ch4.toFixed(2);
+          document.getElementById('val-gas-h2s').textContent = sensorData.h2s.toFixed(1);
+
+          document.getElementById('val-env-temp').textContent = sensorData.temp.toFixed(1);
+          document.getElementById('val-env-hum').textContent = sensorData.hum;
+          document.getElementById('val-env-aqi').textContent = sensorData.aqi;
+
+          document.getElementById('val-health-hr').textContent = sensorData.hr;
+          document.getElementById('val-health-spo2').textContent = sensorData.spo2;
+
+          // Also update Sensors Page values if open
+          const sMq135 = document.getElementById('sensors-page-val-mq135');
+          if (sMq135) sMq135.innerHTML = `${sensorData.aqi} <span class="text-xs font-sans text-slate-500 font-normal">PPM eq.</span>`;
+
+          const sMq7 = document.getElementById('sensors-page-val-mq7');
+          if (sMq7) sMq7.innerHTML = `${sensorData.co.toFixed(1)} <span class="text-xs font-sans text-slate-500 font-normal">ppm</span>`;
+
+          const sMq4 = document.getElementById('sensors-page-val-mq4');
+          if (sMq4) sMq4.innerHTML = `${sensorData.ch4.toFixed(2)} <span class="text-xs font-sans text-slate-500 font-normal">% LEL</span>`;
+
+          const sMq136 = document.getElementById('sensors-page-val-mq136');
+          if (sMq136) sMq136.innerHTML = `${sensorData.h2s.toFixed(1)} <span class="text-xs font-sans text-slate-500 font-normal">ppm</span>`;
+
+          const sDht = document.getElementById('sensors-page-val-dht11');
+          if (sDht) sDht.innerHTML = `${sensorData.temp.toFixed(1)}°C <span class="text-sm font-sans font-normal text-slate-500">/ ${sensorData.hum}%</span>`;
+
+          const sMax = document.getElementById('sensors-page-val-max30102');
+          if (sMax) sMax.innerHTML = `${sensorData.hr} BPM <span class="text-sm font-sans font-normal text-slate-500">/ ${sensorData.spo2}%</span>`;
+
+          if (currentTab === 'alerts') {
+            fetchAlerts();
+          }
+        } catch (err) {
+          console.error('Failed to fetch readings from backend', err);
+        }
+      };
+
+      fetchReadings(); // load immediately, then poll
+      simulationTimer = setInterval(fetchReadings, 3000);
+    }
+
+    // Initialize Application
+    window.addEventListener('DOMContentLoaded', () => {
+      setInterval(updateClock, 1000);
+      updateClock();
+      setSystemState('SAFE');
+      renderAlertsTable(alertHistory);
+    });
+  </script>
+</body>
+</html>
